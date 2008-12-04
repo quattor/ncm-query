@@ -1,0 +1,23 @@
+TODO list for the quattor 'ncm-query' tool
+==========================================
+
+
+To be done:
+-----------
+
+In progress:
+------------
+
+
+Done:
+-----
+- check for installed components
+
+- more wrapping for components (eg. verbose info about status,
+  dependencies, configuration change entries)
+
+
+
+------------------------------------------------------------------------------
+
+German Cancio <German.Cancio@cern.ch>
