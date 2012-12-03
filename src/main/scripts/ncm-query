@@ -1,17 +1,8 @@
 #!/usr/bin/perl
-#
-#
-# ncm-query: NCM query tool - quattor project
-#
-# German Cancio <German.Cancio@cern.ch>
-# Rafael Angel Garcia Leiva <angel.leiva@uam.es>
-#
-# $Id: ncm-query.cin,v 1.17 2008/11/05 13:37:10 munoz Exp $
-#
-# Copyright (c) 2003 CERN and EU DataGrid.
-# For license conditions see http://www.eu-datagrid.org/license.html
-#
-
+# ${license-info}
+# ${developer-info}
+# ${author-info}
+# ${build-info}
 
 =pod
 
