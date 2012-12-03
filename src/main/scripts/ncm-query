@@ -1,4 +1,4 @@
-#!@PERL_EXECUTABLE@ -w
+#!/usr/bin/perl
 #
 #
 # ncm-query: NCM query tool - quattor project
@@ -139,11 +139,6 @@ toolsuite.
 #
 # Beginning sequence for EDG initialization
 #
-BEGIN {
-    # use perl libs in @QTTR_PERLLIB@
-  unshift(@INC, '@QTTR_PERLLIB@');
-  unshift(@INC,'/opt/edg/lib/perl');
-}
 
 #------------------------------------------------------------
 # Application
@@ -151,14 +146,13 @@ BEGIN {
 
 package query;
 
+use lib "/usr/lib/perl";
 use CAF::Application;
 use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use strict;
-use vars qw(@ISA);
-
-@ISA = qw(CAF::Application CAF::Reporter);
+use parent qw(CAF::Application CAF::Reporter);
 
 #
 # Public Methods/Functions for CAF
