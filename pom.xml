@@ -93,6 +93,18 @@
 		  </source>
 		</sources>
 	      </mapping>
+              <mapping>
+                  <directory>/etc</directory>
+                  <filemode>0644</filemode>
+                  <username>root</username>
+                  <groupname>root</groupname>
+                  <directoryIncluded>false</directoryIncluded>
+                  <sources>
+                      <source>
+                          <location>${project.build.directory}/etc</location>
+                      </source>
+                  </sources>
+              </mapping>
 	      <mapping>
 		<directory>/usr/share/doc/${project.artifactId}-${project.version}</directory>
 		<filemode>644</filemode>
@@ -168,6 +180,25 @@
 	      </resources>
 	    </configuration>
 	  </execution>
+          <execution>
+              <id>filter-cfg-sources</id>
+              <phase>process-sources</phase>
+              <goals>
+                  <goal>copy-resources</goal>
+              </goals>
+              <configuration>
+                  <outputDirectory>${project.build.directory}/etc</outputDirectory>
+                  <resources>
+                      <resource>
+                          <directory>src/main/cfg</directory>
+                          <filtering>true</filtering>
+                          <includes>
+                              <include>**/*</include>
+                          </includes>
+                      </resource>
+                  </resources>
+              </configuration>
+          </execution>
 	  <!-- The pod2man script requires a somewhat matching layout
 	       for the target/lib/perl and the target/doc/pod. The
 	       following two executions do that. We'll have to ignore
