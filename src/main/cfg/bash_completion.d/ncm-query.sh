@@ -13,6 +13,10 @@
 # http://www.debian-administration.org/article/317/An_introduction_to_bash_completion_part_2
 #
 
+# If the option under completion starts with a dash, autocompletes an
+# option name (i.e, "--configure").  If it starts with a slash (/),
+# autocompletes some usual profile paths.  Otherwise, autocompletes a
+# component name.
 _ncm_query()
 {
     local opts="--component --help"
