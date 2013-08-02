@@ -91,6 +91,10 @@
                       <exclude>*.pod</exclude>
                     </excludes>
                   </source>
+                  <softlinkSource>
+                    <destination>quattor-query</destination>
+                    <location>ncm-query</location>
+                  </softlinkSource>
                 </sources>
               </mapping>
               <mapping>
