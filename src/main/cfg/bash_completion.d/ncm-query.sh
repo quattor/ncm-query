@@ -41,3 +41,4 @@ _ncm_query()
 }
 
 complete -F _ncm_query ncm-query
+complete -F _ncm_query quattor-query
