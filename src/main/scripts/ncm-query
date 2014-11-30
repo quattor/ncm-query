@@ -80,6 +80,11 @@ use <profile_id> as NVA-API configuration profile ID (default: latest)
 
 CCM cache root directory (optional, otherwise CCM default taken)
 
+=item --indentation <string>
+
+String to use for indenting the levels (resulting indentation 
+is this string multiplied with the depth). Defaults to C<' '>.
+
 =back
 
 =head2 Other Options
