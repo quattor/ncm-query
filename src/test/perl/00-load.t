@@ -99,4 +99,24 @@ my $settings = {
 main::search($root, 0, $settings);
 is($text, $EXPECTED, "Search generated correct results");
 
+=pod
+
+=HEAD2 test indentation
+
+Test the indentation setting
+
+=cut
+
+my $exp_noindent = "$EXPECTED";
+$exp_noindent =~ s/^ +//mg;
+$settings->{INDENTATION} = '';
+
+# reset text and root
+$text='';
+$root = $cfg->getElement("/");
+main::search($root, 0, $settings);
+is($text, $exp_noindent, "Search generated correct non-indented results");
+
+
+
 done_testing();
