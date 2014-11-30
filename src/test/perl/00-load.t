@@ -72,6 +72,13 @@ Readonly my $EXPECTED_PATHS => <<'EOF';
 /level1/level2/string
 EOF
 
+Readonly my $EXPECTED_PATHS_DEPTH_1_REL_LEVEL1 => <<'EOF';
+/level1/_2fmore_2funescape_2f/
+/level1/_2funescape_2f
+/level1/hello
+/level1/level2/
+EOF
+
 my $text='';
 
 my $mock = Test::MockModule->new("CAF::Reporter");
@@ -218,6 +225,28 @@ $root = $cfg->getElement("/");
 main::search($root, 0, $settings);
 is($text, $EXPECTED_LEVEL_TWO, "Search generated correct level 2 results");
 $settings->{MAX_DEPTH} = undef;
+
+=pod
+
+=HEAD2 test max depth combination with paths and relative path
+
+A combined test of paths, depth and non-root path (e.g. for tab completion)
+
+=cut
+
+$settings->{MAX_DEPTH} = 1;
+$settings->{REPORT_STYLE_TREE} = 0;
+$settings->{REPORT_STYLE_PATHS} = 1;
+
+# reset text and root
+$text='';
+$root = $cfg->getElement("/level1");
+main::search($root, 0, $settings);
+is($text, $EXPECTED_PATHS_DEPTH_1_REL_LEVEL1, "Search generated correct /level1  paths depth=1 results");
+
+$settings->{MAX_DEPTH} = undef;
+$settings->{REPORT_STYLE_TREE} = 1;
+$settings->{REPORT_STYLE_PATHS} = 0;
 
 
 done_testing();

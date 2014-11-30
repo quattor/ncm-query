@@ -277,10 +277,13 @@ sub _initialize {
 
     # show setup text
     $self->{'USAGE'} = <<EOF;
-Usage: ncm-query --dump <profile root> [--pan] [--deref] [--deriv] or
-                 --components component1 component2 .. [--pan] [--deref] [--deriv] or
-                 [--isactive component]
-                 [--unescape|nounescape]
+Usage: ncm-query [--dump] <profile root> 
+        or --components component1 component2 ..   
+        or [--isactive component]
+        with options
+        [--deref] [--deriv] [--unescape|nounescape]
+        [--indentation indent] [--depth maxdepth]
+        [--paths] [--pan] [--format pan, paths or tree]
 EOF
 
     # start initialization of CAF::Application
@@ -344,6 +347,7 @@ sub search {
 
     my $element_name = $element->getName();
     my $str = $settings->{INDENTATION} x $depth;
+    my $el_path = $element->getPath()->toString();
 
     if ( $element->isProperty() ) {
         my $deriv = '';
@@ -362,25 +366,35 @@ sub search {
 
         if ($settings->{REPORT_STYLE_PAN}) {
             $value = "\"$value\"" if ($type eq "string");
-            $str= '"' . $element->getPath()->toString() . "\" = $value; # $type";
+            $str = "\"$el_path\" = $value; # $type";
         } elsif ($settings->{REPORT_STYLE_TREE}) {
             $str .= "\$ $element_name : ($type) '$value'";
         } elsif ($settings->{REPORT_STYLE_PATHS}) {
-            $str= $element->getPath()->toString();
+            $str = $el_path;
         };
     
         $this_app->report("$str$deref$deriv");
     } else {
+        my $skip_next = defined($settings->{MAX_DEPTH}) && $depth + 1 > $settings->{MAX_DEPTH};
+
         if ($settings->{REPORT_STYLE_TREE}) {
             if ($settings->{UNESCAPE}) {
                 $element_name = unescape($element_name);
             }
             $this_app->report( "$str+-$element_name" );
         }
-        $depth++;
-        while ( $element->hasNextElement() ) {
-            search( $element->getNextElement(), $depth, $settings);
-        }
+        
+        if ($skip_next) {
+            if ($settings->{REPORT_STYLE_PATHS}) {
+                # ending / indicates possible next level
+                $this_app->report("$el_path/");
+            }
+        } else {
+            $depth++;
+            while ( $element->hasNextElement() ) {
+                search( $element->getNextElement(), $depth, $settings);
+            }
+        };
     };
     return;
 }
