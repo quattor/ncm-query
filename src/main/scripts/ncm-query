@@ -169,27 +169,32 @@ sub app_options() {
         {
             NAME    => 'pan',
             HELP    => 'display the profile in a pan similar syntax',
-            DEFAULT => undef
+            DEFAULT => 0
         },
 
         {
             NAME => 'deref',
             HELP => 'show (dereference) the data pointed to by the property fetch, link and stream properties',
-            DEFAULT => undef
+            DEFAULT => 0
         },
 
         {
             NAME    => 'deriv',
             HELP    => 'show derivation information, if any.',
-            DEFAULT => undef
+            DEFAULT => 0
         },
 
         {
             NAME    => 'unescape!',
             HELP    => 'Unescape or do not unescape nlist keys (D: unescape).',
-            DEFAULT => 'unescape'
+            DEFAULT => 1
         },
 
+        {
+            NAME    => 'indentation',
+            HELP    => 'Indentation to use (one per level).',
+            DEFAULT => ' '
+        },
     );
 
     return \@array;
@@ -286,24 +291,16 @@ $ENV{"PATH"} = "/bin:/sbin:/usr/bin:/usr/sbin";
 autoflush STDOUT 1;
 autoflush STDERR 1;
 
-my $settings = {
-    REPORT_PAN_STYLE => 0,
-    DEREFERENCE      => 0,
-    DERIVATION       => 0,
-    UNESCAPE         => 0,
-};
-
 #------------------------------------------------------------
 # Functions in the main program
 #------------------------------------------------------------
 
 # search function: dumps the config tree recursively
 # code adapted from Rafael A. Leiva
-
 sub search {
     my ($element, $depth, $settings) = @_;
     my $element_name = $element->getName();
-    my $str = ' ' x $depth;
+    my $str = $settings->{INDENTATION} x $depth;
 
     if ( $element->isProperty() ) {
         my $deriv = '';
@@ -409,10 +406,13 @@ if ( defined $active ) {
     exit(-1);
 }
 
-$settings->{REPORT_PAN_STYLE} = 1 if ( $this_app->option('pan') );
-$settings->{DEREFERENCE}      = 1 if ( $this_app->option('deref') );
-$settings->{DERIVATION}       = 1 if ( $this_app->option('deriv') );
-$settings->{UNESCAPE}         = 1 if ( $this_app->option('unescape') );
+my $settings = {
+    REPORT_PAN_STYLE => $this_app->option('pan'),
+    DEREFERENCE => $this_app->option('deref'),
+    DERIVATION => $this_app->option('deriv'),
+    UNESCAPE => $this_app->option('unescape'),
+    INDENTATION => $this_app->option('indentation'),
+};
 
 my @PATHS         = ();
 my $wantcomponent = 0;
