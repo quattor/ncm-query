@@ -1,6 +1,9 @@
 object template load;
 
-"/level0/hello" = "level0";
+prefix "/level0";
+"hello" = "level0";
+"{/unescape/}" = "unescape";
+"{/more/unescape/}/yeah" = "/more/unescape";
 
 prefix "/level0/level1";
 "string" = "string";
@@ -11,4 +14,3 @@ prefix "/level0/level1";
 "nlist" = nlist("nlist", "ok");
 
 "level2/hello" = "level2";
-
