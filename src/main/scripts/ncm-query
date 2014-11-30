@@ -228,7 +228,7 @@ sub setCCMConfig {
         return undef;
     }
 
-    my $cred = undef;    # not defined yet in CCM
+    my $cred = undef; # not defined yet in CCM
 
     $self->verbose('getting unlocked CCM configuration');
 
@@ -340,12 +340,12 @@ sub search {
         }
 
         if ($settings->{DEREFERENCE}) {
-            $deref = ' dereference: [$deref]' if ( $deref ne '' );
+            $deref = " dereference: [$deref]" if ( $deref ne '' );
         }
 
         if ($settings->{REPORT_PAN_STYLE}) {
-            $value = '"$value"' if ($type eq "string");
-            $str= '"' . $element->getPath()->toString() . '" = $value; # $type';
+            $value = "\"$value\"" if ($type eq "string");
+            $str= '"' . $element->getPath()->toString() . "\" = $value; # $type";
         } else {
             $str .= "\$ $element_name : ($type) '$value'";
         };

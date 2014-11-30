@@ -40,6 +40,22 @@ Readonly my $EXPECTED_LEVEL_TWO => <<'EOF';
   +-level2
 EOF
 
+# TODO This is wrong due to JSON and typeless perl.
+Readonly my $EXPECTED_PAN => <<'EOF';
+"/level1/_2fmore_2funescape_2f/yeah" = "/more/unescape"; # string
+"/level1/_2funescape_2f" = "unescape"; # string
+"/level1/hello" = "level1"; # string
+"/level1/level2/boolean" = true; # boolean
+"/level1/level2/double" = "0.5"; # string
+"/level1/level2/level3/hello" = "level3"; # string
+"/level1/level2/list/0" = "1"; # string
+"/level1/level2/list/1" = "2"; # string
+"/level1/level2/list/2" = "3"; # string
+"/level1/level2/long" = "10"; # string
+"/level1/level2/nlist/nlist" = "ok"; # string
+"/level1/level2/string" = "string"; # string
+EOF
+
 my $text='';
 
 my $mock = Test::MockModule->new("CAF::Reporter");
@@ -84,7 +100,7 @@ foreach my $opt (@$opts) {
 is(scalar @$opts, 11, scalar @$opts." options generated");
 is_deeply($options, ['dump=s', , 'isactive=s', 'components=s', 'cache_root:s', 
                      'useprofile:s', 'pan', 'deref', 'deriv', 'unescape!', 
-                     'indentation', 'depth',
+                     'indentation', 'depth=s',
                      ], "expected options");
 
 =pod
@@ -125,6 +141,23 @@ $text='';
 $root = $cfg->getElement("/");
 main::search($root, 0, $settings);
 is($text, $exp_noindent, "Search generated correct non-indented results");
+$settings->{INDENTATION} = ' ';
+
+=pod
+
+=HEAD2 test pan
+
+Test the pan reporting
+
+=cut
+
+$settings->{REPORT_PAN_STYLE} = 1;
+# reset text and root
+$text='';
+$root = $cfg->getElement("/");
+main::search($root, 0, $settings);
+is($text, $EXPECTED_PAN, "Search generated correct pan style results");
+$settings->{REPORT_PAN_STYLE} = 0;
 
 =pod
 
@@ -138,10 +171,11 @@ Test the depth setting limiting the number of levels shown.
 $settings->{MAX_DEPTH} = 2;
 
 # reset text and root
-$settings->{INDENTATION} = ' ';
 $text='';
 $root = $cfg->getElement("/");
 main::search($root, 0, $settings);
 is($text, $EXPECTED_LEVEL_TWO, "Search generated correct level 2 results");
+$settings->{MAX_DEPTH} = undef;
+
 
 done_testing();
