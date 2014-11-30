@@ -4,6 +4,7 @@ use warnings;
 use Test::More;
 use Test::Quattor qw(load);
 use Test::MockModule;
+use EDG::WP4::CCM::Element;
 
 use Readonly;
 
@@ -56,6 +57,21 @@ Readonly my $EXPECTED_PAN => <<'EOF';
 "/level1/level2/string" = "string"; # string
 EOF
 
+Readonly my $EXPECTED_PATHS => <<'EOF';
+/level1/_2fmore_2funescape_2f/yeah
+/level1/_2funescape_2f
+/level1/hello
+/level1/level2/boolean
+/level1/level2/double
+/level1/level2/level3/hello
+/level1/level2/list/0
+/level1/level2/list/1
+/level1/level2/list/2
+/level1/level2/long
+/level1/level2/nlist/nlist
+/level1/level2/string
+EOF
+
 my $text='';
 
 my $mock = Test::MockModule->new("CAF::Reporter");
@@ -97,10 +113,10 @@ foreach my $opt (@$opts) {
     push(@$options, $opt->{NAME});
 }
 
-is(scalar @$opts, 11, scalar @$opts." options generated");
+is(scalar @$opts, 13, scalar @$opts." options generated");
 is_deeply($options, ['dump=s', , 'isactive=s', 'components=s', 'cache_root:s', 
                      'useprofile:s', 'pan', 'deref', 'deriv', 'unescape!', 
-                     'indentation', 'depth=s',
+                     'indentation', 'depth=s', 'paths', 'format:s',
                      ], "expected options");
 
 =pod
@@ -114,11 +130,17 @@ Test main functions
 my $cfg = get_config_for_profile('load');
 my $root = $cfg->getElement("/");
 my $settings = {
-    REPORT_PAN_STYLE => 0,
+    MAP => {
+        EDG::WP4::CCM::Element::STRING => 'string',
+        EDG::WP4::CCM::Element::LONG => 'long',
+        EDG::WP4::CCM::Element::DOUBLE => 'double',
+        EDG::WP4::CCM::Element::BOOLEAN => 'boolean',
+        },
     DEREFERENCE => 0,
     DERIVATION => 0,
     UNESCAPE => 1,
     INDENTATION => ' ',
+    REPORT_STYLE_TREE => 1,
 };
 
 main::search($root, 0, $settings);
@@ -151,13 +173,33 @@ Test the pan reporting
 
 =cut
 
-$settings->{REPORT_PAN_STYLE} = 1;
+$settings->{REPORT_STYLE_TREE} = 0;
+$settings->{REPORT_STYLE_PAN} = 1;
 # reset text and root
 $text='';
 $root = $cfg->getElement("/");
 main::search($root, 0, $settings);
 is($text, $EXPECTED_PAN, "Search generated correct pan style results");
-$settings->{REPORT_PAN_STYLE} = 0;
+$settings->{REPORT_STYLE_TREE} = 1;
+$settings->{REPORT_STYLE_PAN} = 0;
+
+=pod
+
+=HEAD2 test pan
+
+Test the pan reporting
+
+=cut
+
+$settings->{REPORT_STYLE_TREE} = 0;
+$settings->{REPORT_STYLE_PATHS} = 1;
+# reset text and root
+$text='';
+$root = $cfg->getElement("/");
+main::search($root, 0, $settings);
+is($text, $EXPECTED_PATHS, "Search generated correct paths style results");
+$settings->{REPORT_STYLE_TREE} = 1;
+$settings->{REPORT_STYLE_PATHS} = 0;
 
 =pod
 

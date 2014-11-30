@@ -89,6 +89,10 @@ is this string multiplied with the depth). Defaults to C<' '>.
 
 Show maximum number of levels, e.g. C<--depth 2> shows level 0,1 and 2. (Default show all levels).
 
+=item --path-only
+
+Boolean, only show paths, no value.
+
 =back
 
 =head2 Other Options
@@ -177,7 +181,7 @@ sub app_options() {
 
         {
             NAME    => 'pan',
-            HELP    => 'display the profile in a pan similar syntax',
+            HELP    => 'display the profile in a pan similar syntax (sets format "pan")',
             DEFAULT => 0
         },
 
@@ -209,6 +213,18 @@ sub app_options() {
             NAME    => 'depth=s',
             HELP    => 'Maximum level depth to show. (Default to undef, meaning no restrictions)',
             DEFAULT => undef,
+        },
+
+        {
+            NAME    => 'paths',
+            HELP    => 'Only show the path(s), no values. (Sets format "paths")',
+            DEFAULT => 0,
+        },
+
+        {
+            NAME    => 'format:s',
+            HELP    => 'Select the format to show. Undefined or unknown implies "tree"; also "pan" and "paths".',
+            DEFAULT => 'tree',
         },
 
     );
@@ -295,6 +311,14 @@ use LC::Exception qw (SUCCESS throw_error);
 use vars qw($this_app %SIG);
 use EDG::WP4::CCM::Element qw(unescape);
 
+use Readonly;
+
+Readonly::Hash my %REPORT_STYLE => {
+    TREE => "tree",
+    PAN => "pan",
+    PATH_ONLY => "path-only",
+};
+
 my $ec = LC::Exception::Context->new->will_store_errors;
 
 # fix umask
@@ -314,7 +338,7 @@ autoflush STDERR 1;
 # search function: dumps the config tree recursively
 # code adapted from Rafael A. Leiva
 sub search {
-    my ($element, $depth, $settings) = @_;
+    my ($element, $depth, $settings, $style) = @_;
 
     return if (defined($settings->{MAX_DEPTH}) && $depth > $settings->{MAX_DEPTH});
 
@@ -325,14 +349,7 @@ sub search {
         my $deriv = '';
         my $deref = '';
 
-        # simple types
-        my $map = {
-            EDG::WP4::CCM::Element::STRING => 'string',
-            EDG::WP4::CCM::Element::LONG => 'long',
-            EDG::WP4::CCM::Element::DOUBLE => 'double',
-            EDG::WP4::CCM::Element::BOOLEAN => 'boolean',
-        };
-        my $type = $map->{$element->getType()};
+        my $type = $settings->{MAP}->{$element->getType()};
         my $value = $element->getValue();
 
         if ($settings->{DERIVATION}) {
@@ -343,16 +360,18 @@ sub search {
             $deref = " dereference: [$deref]" if ( $deref ne '' );
         }
 
-        if ($settings->{REPORT_PAN_STYLE}) {
+        if ($settings->{REPORT_STYLE_PAN}) {
             $value = "\"$value\"" if ($type eq "string");
             $str= '"' . $element->getPath()->toString() . "\" = $value; # $type";
-        } else {
+        } elsif ($settings->{REPORT_STYLE_TREE}) {
             $str .= "\$ $element_name : ($type) '$value'";
+        } elsif ($settings->{REPORT_STYLE_PATHS}) {
+            $str= $element->getPath()->toString();
         };
     
         $this_app->report("$str$deref$deriv");
     } else {
-        unless ($settings->{REPORT_PAN_STYLE}) {
+        if ($settings->{REPORT_STYLE_TREE}) {
             if ($settings->{UNESCAPE}) {
                 $element_name = unescape($element_name);
             }
@@ -374,8 +393,7 @@ sub dump_info {
         $this_app->error( "Path: '$path' does not exist" );
         exit(-1);
     }
-    $this_app->report();
-    $this_app->info( "Subtree: $path" );
+    $this_app->info( "Subtree: $path" ) if (! $settings->{REPORT_STYLE_PATHS});
     search($element, 0, $settings);
 }
 
@@ -426,12 +444,31 @@ if ( defined $active ) {
 }
 
 my $settings = {
-    REPORT_PAN_STYLE => $this_app->option('pan'),
+    MAP => {
+        EDG::WP4::CCM::Element::STRING => 'string',
+        EDG::WP4::CCM::Element::LONG => 'long',
+        EDG::WP4::CCM::Element::DOUBLE => 'double',
+        EDG::WP4::CCM::Element::BOOLEAN => 'boolean',
+        },
     DEREFERENCE => $this_app->option('deref'),
     DERIVATION => $this_app->option('deriv'),
     UNESCAPE => $this_app->option('unescape'),
     INDENTATION => $this_app->option('indentation'),
     MAX_DEPTH => $this_app->option('depth'),
+};
+
+if ($this_app->option('pan')) {
+    $settings->{REPORT_STYLE_PAN} = 1 ;
+} elsif ($this_app->option('paths')) {
+    $settings->{REPORT_STYLE_PATHS} = 1;
+} else {
+    my $fmt = uc($this_app->option('format'));
+    if ($REPORT_STYLE{$fmt}) {
+        $settings->{"REPORT_STYLE_$fmt"} = 1;
+    } else {
+        $this_app->warn("Unsupported format ".$this_app->option('format'));
+        $settings->{REPORT_STYLE_TREE} = 1;
+    };
 };
 
 my @PATHS         = ();
