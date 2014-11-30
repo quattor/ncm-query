@@ -11,16 +11,16 @@ Readonly my $SCRIPT => 'src/main/scripts/ncm-query';
 
 Readonly my $EXPECTED => <<'EOF';
 +-/
- +-level0
+ +-level1
   +-/more/unescape/
    $ yeah : (string) '/more/unescape'
   $ _2funescape_2f : (string) 'unescape'
-  $ hello : (string) 'level0'
-  +-level1
+  $ hello : (string) 'level1'
+  +-level2
    $ boolean : (boolean) 'true'
    $ double : (string) '0.5'
-   +-level2
-    $ hello : (string) 'level2'
+   +-level3
+    $ hello : (string) 'level3'
    +-list
     $ 0 : (string) '1'
     $ 1 : (string) '2'
@@ -29,6 +29,15 @@ Readonly my $EXPECTED => <<'EOF';
    +-nlist
     $ nlist : (string) 'ok'
    $ string : (string) 'string'
+EOF
+
+Readonly my $EXPECTED_LEVEL_TWO => <<'EOF';
++-/
+ +-level1
+  +-/more/unescape/
+  $ _2funescape_2f : (string) 'unescape'
+  $ hello : (string) 'level1'
+  +-level2
 EOF
 
 my $text='';
@@ -72,10 +81,10 @@ foreach my $opt (@$opts) {
     push(@$options, $opt->{NAME});
 }
 
-is(scalar @$opts, 10, scalar @$opts." options generated");
+is(scalar @$opts, 11, scalar @$opts." options generated");
 is_deeply($options, ['dump=s', , 'isactive=s', 'components=s', 'cache_root:s', 
                      'useprofile:s', 'pan', 'deref', 'deriv', 'unescape!', 
-                     'indentation',
+                     'indentation', 'depth',
                      ], "expected options");
 
 =pod
@@ -117,6 +126,22 @@ $root = $cfg->getElement("/");
 main::search($root, 0, $settings);
 is($text, $exp_noindent, "Search generated correct non-indented results");
 
+=pod
 
+=HEAD2 test max depth
+
+Test the depth setting limiting the number of levels shown.
+
+=cut
+
+# up to level 2 (/ is level0)
+$settings->{MAX_DEPTH} = 2;
+
+# reset text and root
+$settings->{INDENTATION} = ' ';
+$text='';
+$root = $cfg->getElement("/");
+main::search($root, 0, $settings);
+is($text, $EXPECTED_LEVEL_TWO, "Search generated correct level 2 results");
 
 done_testing();

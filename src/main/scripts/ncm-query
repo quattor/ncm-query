@@ -85,6 +85,10 @@ CCM cache root directory (optional, otherwise CCM default taken)
 String to use for indenting the levels (resulting indentation 
 is this string multiplied with the depth). Defaults to C<' '>.
 
+=item --depth <long>
+
+Show maximum number of levels, e.g. C<--depth 2> shows level 0,1 and 2. (Default show all levels).
+
 =back
 
 =head2 Other Options
@@ -200,6 +204,13 @@ sub app_options() {
             HELP    => 'Indentation to use (one per level).',
             DEFAULT => ' '
         },
+
+        {
+            NAME    => 'depth=s',
+            HELP    => 'Maximum level depth to show. (Default to undef, meaning no restrictions)',
+            DEFAULT => undef,
+        },
+
     );
 
     return \@array;
@@ -304,6 +315,9 @@ autoflush STDERR 1;
 # code adapted from Rafael A. Leiva
 sub search {
     my ($element, $depth, $settings) = @_;
+
+    return if (defined($settings->{MAX_DEPTH}) && $depth > $settings->{MAX_DEPTH});
+
     my $element_name = $element->getName();
     my $str = $settings->{INDENTATION} x $depth;
 
@@ -417,6 +431,7 @@ my $settings = {
     DERIVATION => $this_app->option('deriv'),
     UNESCAPE => $this_app->option('unescape'),
     INDENTATION => $this_app->option('indentation'),
+    MAX_DEPTH => $this_app->option('depth'),
 };
 
 my @PATHS         = ();
