@@ -268,6 +268,8 @@ EOF
 package main;
 
 use strict;
+use warnings;
+
 use LC::Exception qw (SUCCESS throw_error);
 use vars qw($this_app %SIG);
 use EDG::WP4::CCM::Element qw(unescape);
@@ -284,11 +286,12 @@ $ENV{"PATH"} = "/bin:/sbin:/usr/bin:/usr/sbin";
 autoflush STDOUT 1;
 autoflush STDERR 1;
 
-my $depth            = 0;
-my $REPORT_PAN_STYLE = 0;
-my $DEREFERENCE      = 0;
-my $DERIVATION       = 0;
-my $UNESCAPE         = 0;
+my $settings = {
+    REPORT_PAN_STYLE => 0,
+    DEREFERENCE      => 0,
+    DERIVATION       => 0,
+    UNESCAPE         => 0,
+};
 
 #------------------------------------------------------------
 # Functions in the main program
@@ -298,82 +301,66 @@ my $UNESCAPE         = 0;
 # code adapted from Rafael A. Leiva
 
 sub search {
-    my ($element) = @_;
-    my $i;
-    my $str   = '';
-    my $deriv = '';
-    my $deref = '';
-    my $type;
-    my $value;
-    for ( $i = 0 ; $i < $depth ; $i++ ) {
-        $str .= "  ";
-    }
+    my ($element, $depth, $settings) = @_;
+    my $element_name = $element->getName();
+    my $str = ' ' x $depth;
+
     if ( $element->isProperty() ) {
-        $str .= '$ ' . $element->getName() . " : ";
+        my $deriv = '';
+        my $deref = '';
 
         # simple types
-        $type = "string"  if $element->isType(EDG::WP4::CCM::Element::STRING);
-        $type = "long"    if $element->isType(EDG::WP4::CCM::Element::LONG);
-        $type = "double"  if $element->isType(EDG::WP4::CCM::Element::DOUBLE);
-        $type = "boolean" if $element->isType(EDG::WP4::CCM::Element::BOOLEAN);
-        $str .= "($type) '";
-        $value = $element->getValue();
-        $str .= $value . "'";
-        $deriv = '';
+        my $map = {
+            EDG::WP4::CCM::Element::STRING => 'string',
+            EDG::WP4::CCM::Element::LONG => 'long',
+            EDG::WP4::CCM::Element::DOUBLE => 'double',
+            EDG::WP4::CCM::Element::BOOLEAN => 'boolean',
+        };
+        my $type = $map->{$element->getType()};
+        my $value = $element->getValue();
 
-        if ($DERIVATION) {
+        if ($settings->{DERIVATION}) {
             $deriv = ' derivation: [' . $element->getDerivation() . ']';
         }
-        $deref = '';
-        if ($DEREFERENCE) {
-            $deref = ' dereference: [' . $deref . ']' if ( $deref ne '' );
-        }
-        else {
-            $deref = '';
+
+        if ($settings->{DEREFERENCE}) {
+            $deref = ' dereference: [$deref]' if ( $deref ne '' );
         }
 
-        if ($REPORT_PAN_STYLE) {
-            $value = '"' . $value . '"'
-              if $element->isType(EDG::WP4::CCM::Element::STRING);
-            $this_app->report( '"'
-                  . $element->getPath()->toString() . '" = '
-                  . $value . '; # '
-                  . $type
-                  . $deref
-                  . $deriv );
+        if ($settings->{REPORT_PAN_STYLE}) {
+            $value = '"$value"' if ($type eq "string");
+            $str= '"' . $element->getPath()->toString() . '" = $value; # $type';
+        } else {
+            $str .= "\$ $element_name : ($type) '$value'";
+        };
+    
+        $this_app->report("$str$deref$deriv");
+    } else {
+        unless ($settings->{REPORT_PAN_STYLE}) {
+            if ($settings->{UNESCAPE}) {
+                $element_name = unescape($element_name);
+            }
+            $this_app->report( "$str+-$element_name" );
         }
-        else {
-            $this_app->report( $str . $deref . $deriv );
-        }
-        $depth--;
-        return;
-    }
-    unless ($REPORT_PAN_STYLE) {
-        my $element_name = $element->getName();
-        if ($UNESCAPE) {
-            $element_name = unescape($element_name);
-        }
-        $this_app->report( $str . "+-" . $element_name );
-    }
-    while ( $element->hasNextElement() ) {
         $depth++;
-        &search( $element->getNextElement(), $depth );
-    }
-    $depth--;
+        while ( $element->hasNextElement() ) {
+            search( $element->getNextElement(), $depth, $settings);
+        }
+    };
     return;
 }
 
 sub dump_info {
-    my $path    = shift;
+    my ($path, $settings, $ec) = @_;
     my $element = $this_app->getCCMConfig()->getElement($path);
     unless ( defined $element ) {
         $ec->ignore_error();
-        $this_app->error( "Path: '" . $path . "' does not exist" );
+        $this_app->error( "Path: '$path' does not exist" );
         exit(-1);
     }
     $this_app->report();
-    $this_app->info( 'Subtree: ' . $path );
-    &search($element);
+    $this_app->info( "Subtree: $path" );
+    search($element, 0, $settings);
 }
 
 #
@@ -412,7 +399,7 @@ unless ( scalar @ARGV
 my $active = $this_app->option('isactive');
 if ( defined $active ) {
     my $element = $this_app->getCCMConfig()
-      ->getElement( "/software/components/" . $active . "/active" );
+      ->getElement( "/software/components/$active/active" );
     if ( defined $element && $element->getValue() eq 'true' ) {
         $this_app->info("Component $active is active");
         exit(0);
@@ -422,11 +409,10 @@ if ( defined $active ) {
     exit(-1);
 }
 
-$REPORT_PAN_STYLE = 1 if ( $this_app->option('pan') );
-$DEREFERENCE      = 1 if ( $this_app->option('deref') );
-$DERIVATION       = 1 if ( $this_app->option('deriv') );
-
-$UNESCAPE = 1 if ( $this_app->option('unescape') );
+$settings->{REPORT_PAN_STYLE} = 1 if ( $this_app->option('pan') );
+$settings->{DEREFERENCE}      = 1 if ( $this_app->option('deref') );
+$settings->{DERIVATION}       = 1 if ( $this_app->option('deriv') );
+$settings->{UNESCAPE}         = 1 if ( $this_app->option('unescape') );
 
 my @PATHS         = ();
 my $wantcomponent = 0;
@@ -445,13 +431,11 @@ else {
 
 push( @PATHS, @ARGV );
 
-foreach (@PATHS) {
+foreach my $path (@PATHS) {
     if ($wantcomponent) {
-        &dump_info( '/software/components/' . $_ );
+        $path = "/software/components/$path";
     }
-    else {
-        &dump_info($_);
-    }
+    dump_info($path, $settings, $ec);
 }
 
 exit(0);
