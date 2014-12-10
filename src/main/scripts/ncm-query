@@ -127,10 +127,10 @@ Set the debugging level to <1..5>.
 # Application
 #
 
+package query;
+
 use strict;
 use warnings;
-
-package query;
 
 use lib "/usr/lib/perl";
 use CAF::Application;
@@ -143,7 +143,8 @@ use parent qw(CAF::Application CAF::Reporter);
 # Public Methods/Functions for CAF
 #
 
-sub app_options() {
+sub app_options()
+{
 
     # these options complement the ones defined in CAF::Application
     push(
@@ -168,14 +169,14 @@ sub app_options() {
         },
 
         {
-            NAME => 'cache_root:s',
-            HELP => 'CCM cache root directory (optional, otherwise CCM default taken)',
+            NAME    => 'cache_root:s',
+            HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)',
             DEFAULT => undef
         },
 
         {
-            NAME => 'useprofile:s',
-            HELP => 'profile to use as configuration profile (optional, otherwise latest)',
+            NAME    => 'useprofile:s',
+            HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
             DEFAULT => undef
         },
 
@@ -187,7 +188,8 @@ sub app_options() {
 
         {
             NAME => 'deref',
-            HELP => 'show (dereference) the data pointed to by the property fetch, link and stream properties',
+            HELP =>
+                'show (dereference) the data pointed to by the property fetch, link and stream properties',
             DEFAULT => 0
         },
 
@@ -222,8 +224,9 @@ sub app_options() {
         },
 
         {
-            NAME    => 'format:s',
-            HELP    => 'Select the format to show. Undefined or unknown implies "tree"; also "pan" and "paths".',
+            NAME => 'format:s',
+            HELP =>
+                'Select the format to show. Undefined or unknown implies "tree"; also "pan" and "paths".',
             DEFAULT => 'tree',
         },
 
@@ -233,24 +236,25 @@ sub app_options() {
 
 }
 
-sub setCCMConfig {
-    my ( $self, $cacheroot, $profileID ) = @_;
+sub setCCMConfig
+{
+    my ($self, $cacheroot, $profileID) = @_;
 
     $self->verbose('accessing CCM cache manager');
 
     $self->{'CACHEMGR'} = EDG::WP4::CCM::CacheManager->new($cacheroot);
-    unless ( defined $self->{'CACHEMGR'} ) {
+    unless (defined $self->{'CACHEMGR'}) {
         throw_error('cannot access cache manager');
         return undef;
     }
 
-    my $cred = undef; # not defined yet in CCM
+    my $cred = undef;    # not defined yet in CCM
 
     $self->verbose('getting unlocked CCM configuration');
 
     $self->{'CCM_CONFIG'} =
-      $self->{'CACHEMGR'}->getUnlockedConfiguration( $cred, $profileID );
-    unless ( defined $self->{'CCM_CONFIG'} ) {
+        $self->{'CACHEMGR'}->getUnlockedConfiguration($cred, $profileID);
+    unless (defined $self->{'CCM_CONFIG'}) {
         throw_error('cannot get configuration via CCM');
         return undef;
     }
@@ -263,14 +267,17 @@ sub setCCMConfig {
 # returns the CCM config instance
 #
 
-sub getCCMConfig {
+sub getCCMConfig
+{
     my $self = shift;
 
     return $self->{'CCM_CONFIG'};
 }
 
-sub _initialize {
+sub _initialize
+{
     my $self = shift;
+
     # define application specific data.
     # external version number
     $self->{'VERSION'} = '@VERSION@';
@@ -287,16 +294,8 @@ Usage: ncm-query [--dump] <profile root>
 EOF
 
     # start initialization of CAF::Application
-    unless ( $self->SUPER::_initialize(@_) ) {
+    unless ($self->SUPER::_initialize(@_)) {
         return undef;
-    }
-
-    # ensure allowed to run
-    if ($>) {
-        $self->error( "Sorry "
-              . $self->username()
-              . ", this program must be run by root" );
-        exit(-1);
     }
 
     return SUCCESS;
@@ -317,8 +316,8 @@ use EDG::WP4::CCM::Element qw(unescape);
 use Readonly;
 
 Readonly::Hash my %REPORT_STYLE => {
-    TREE => "tree",
-    PAN => "pan",
+    TREE      => "tree",
+    PAN       => "pan",
     PATH_ONLY => "path-only",
 };
 
@@ -340,20 +339,21 @@ autoflush STDERR 1;
 
 # search function: dumps the config tree recursively
 # code adapted from Rafael A. Leiva
-sub search {
+sub search
+{
     my ($element, $depth, $settings, $style) = @_;
 
     return if (defined($settings->{MAX_DEPTH}) && $depth > $settings->{MAX_DEPTH});
 
     my $element_name = $element->getName();
-    my $str = $settings->{INDENTATION} x $depth;
-    my $el_path = $element->getPath()->toString();
+    my $str          = $settings->{INDENTATION} x $depth;
+    my $el_path      = $element->getPath()->toString();
 
-    if ( $element->isProperty() ) {
+    if ($element->isProperty()) {
         my $deriv = '';
         my $deref = '';
 
-        my $type = $settings->{MAP}->{$element->getType()};
+        my $type  = $settings->{MAP}->{$element->getType()};
         my $value = $element->getValue();
 
         if ($settings->{DERIVATION}) {
@@ -361,7 +361,7 @@ sub search {
         }
 
         if ($settings->{DEREFERENCE}) {
-            $deref = " dereference: [$deref]" if ( $deref ne '' );
+            $deref = " dereference: [$deref]" if ($deref ne '');
         }
 
         if ($settings->{REPORT_STYLE_PAN}) {
@@ -371,8 +371,8 @@ sub search {
             $str .= "\$ $element_name : ($type) '$value'";
         } elsif ($settings->{REPORT_STYLE_PATHS}) {
             $str = $el_path;
-        };
-    
+        }
+
         $this_app->report("$str$deref$deriv");
     } else {
         my $skip_next = defined($settings->{MAX_DEPTH}) && $depth + 1 > $settings->{MAX_DEPTH};
@@ -381,33 +381,34 @@ sub search {
             if ($settings->{UNESCAPE}) {
                 $element_name = unescape($element_name);
             }
-            $this_app->report( "$str+-$element_name" );
+            $this_app->report("$str+-$element_name");
         }
-        
+
         if ($skip_next) {
             if ($settings->{REPORT_STYLE_PATHS}) {
-                # ending / indicates possible next level
+                # trailing / indicates possible next level
                 $this_app->report("$el_path/");
             }
         } else {
             $depth++;
-            while ( $element->hasNextElement() ) {
-                search( $element->getNextElement(), $depth, $settings);
+            while ($element->hasNextElement()) {
+                search($element->getNextElement(), $depth, $settings);
             }
-        };
-    };
+        }
+    }
     return;
 }
 
-sub dump_info {
+sub dump_info
+{
     my ($path, $settings, $ec) = @_;
     my $element = $this_app->getCCMConfig()->getElement($path);
-    unless ( defined $element ) {
+    unless (defined $element) {
         $ec->ignore_error();
-        $this_app->error( "Path: '$path' does not exist" );
+        $this_app->error("Path: '$path' does not exist");
         exit(-1);
     }
-    $this_app->info( "Subtree: $path" ) if (! $settings->{REPORT_STYLE_PATHS});
+    $this_app->info("Subtree: $path") if (!$settings->{REPORT_STYLE_PATHS});
     search($element, 0, $settings);
 }
 
@@ -416,39 +417,32 @@ sub dump_info {
 #
 
 # initialize the ncm-query application
-unless ( $this_app = query->new( $0, @ARGV ) ) {
+unless ($this_app = query->new($0, @ARGV)) {
     throw_error("cannot start application");
 }
 
 # process command line options before proceeding.
 
 # get CCM config
-unless (
-    $this_app->setCCMConfig(
-        $this_app->option('cache_root'),
-        $this_app->option('useprofile')
-    )
-  )
-{
+unless ($this_app->setCCMConfig($this_app->option('cache_root'), $this_app->option('useprofile'))) {
     $this_app->error("cannot get CCM configuration");
     exit(-1);
 }
 
-unless ( scalar @ARGV
+unless (scalar @ARGV
     || $this_app->option('dump')
     || $this_app->option('components')
-    || $this_app->option('isactive') )
+    || $this_app->option('isactive'))
 {
     $this_app->error('please specify an option');
-    $this_app->report( $this_app->{'USAGE'} );
+    $this_app->report($this_app->{'USAGE'});
     exit(-1);
 }
 
 my $active = $this_app->option('isactive');
-if ( defined $active ) {
-    my $element = $this_app->getCCMConfig()
-      ->getElement( "/software/components/$active/active" );
-    if ( defined $element && $element->getValue() eq 'true' ) {
+if (defined $active) {
+    my $element = $this_app->getCCMConfig()->getElement("/software/components/$active/active");
+    if (defined $element && $element->getValue() eq 'true') {
         $this_app->info("Component $active is active");
         exit(0);
     }
@@ -459,20 +453,20 @@ if ( defined $active ) {
 
 my $settings = {
     MAP => {
-        EDG::WP4::CCM::Element::STRING => 'string',
-        EDG::WP4::CCM::Element::LONG => 'long',
-        EDG::WP4::CCM::Element::DOUBLE => 'double',
+        EDG::WP4::CCM::Element::STRING  => 'string',
+        EDG::WP4::CCM::Element::LONG    => 'long',
+        EDG::WP4::CCM::Element::DOUBLE  => 'double',
         EDG::WP4::CCM::Element::BOOLEAN => 'boolean',
-        },
+    },
     DEREFERENCE => $this_app->option('deref'),
-    DERIVATION => $this_app->option('deriv'),
-    UNESCAPE => $this_app->option('unescape'),
+    DERIVATION  => $this_app->option('deriv'),
+    UNESCAPE    => $this_app->option('unescape'),
     INDENTATION => $this_app->option('indentation'),
-    MAX_DEPTH => $this_app->option('depth'),
+    MAX_DEPTH   => $this_app->option('depth'),
 };
 
 if ($this_app->option('pan')) {
-    $settings->{REPORT_STYLE_PAN} = 1 ;
+    $settings->{REPORT_STYLE_PAN} = 1;
 } elsif ($this_app->option('paths')) {
     $settings->{REPORT_STYLE_PATHS} = 1;
 } else {
@@ -480,27 +474,26 @@ if ($this_app->option('pan')) {
     if ($REPORT_STYLE{$fmt}) {
         $settings->{"REPORT_STYLE_$fmt"} = 1;
     } else {
-        $this_app->warn("Unsupported format ".$this_app->option('format'));
+        $this_app->warn("Unsupported format " . $this_app->option('format'));
         $settings->{REPORT_STYLE_TREE} = 1;
-    };
-};
+    }
+}
 
 my @PATHS         = ();
 my $wantcomponent = 0;
 
 my $path = $this_app->option('dump');
-if ( defined $path ) {
-    push( @PATHS, $path );
-}
-else {
+if (defined $path) {
+    push(@PATHS, $path);
+} else {
     $path = $this_app->option('components');
-    if ( defined $path ) {
-        push( @PATHS, $path );
+    if (defined $path) {
+        push(@PATHS, $path);
         $wantcomponent = 1;
     }
 }
 
-push( @PATHS, @ARGV );
+push(@PATHS, @ARGV);
 
 foreach my $path (@PATHS) {
     if ($wantcomponent) {
