@@ -10,9 +10,7 @@
 
 ncm-query
 
-NCM query tool of the NCM (Node Configuration Management) subsystem
-
-quattor toolsuite http://cern.ch/quattor
+Query tool of the NCM (Node Configuration Management) subsystem
 
 =head1 SYNOPSIS
 
@@ -82,6 +80,19 @@ use <profile_id> as NVA-API configuration profile ID (default: latest)
 
 CCM cache root directory (optional, otherwise CCM default taken)
 
+=item --indentation <string>
+
+String to use for indenting the levels (resulting indentation 
+is this string multiplied with the depth). Defaults to C<' '>.
+
+=item --depth <long>
+
+Show maximum number of levels, e.g. C<--depth 2> shows level 0,1 and 2. (Default show all levels).
+
+=item --path-only
+
+Boolean, only show paths, no value.
+
 =back
 
 =head2 Other Options
@@ -110,84 +121,114 @@ Set the debugging level to <1..5>.
 
 =back
 
-=head1 AUTHORS
-
-German Cancio, CERN <German.Cancio@cern.ch>, dump function derived
-from Rafael Angel Garcia Leiva, UAM <angel.leiva@uam.es>
-
-=head1 MORE INFORMATION
-
-Visit B<http://cern.ch/quattor> for more information on the quattor
-toolsuite.
-
 =cut
 
-
 #
-# Standard Common Application Framework beginning sequence
-#
-
-#
-# Beginning sequence for EDG initialization
-#
-
-#------------------------------------------------------------
 # Application
-#------------------------------------------------------------
+#
 
 package query;
+
+use strict;
+use warnings;
 
 use lib "/usr/lib/perl";
 use CAF::Application;
 use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
-use strict;
 use parent qw(CAF::Application CAF::Reporter);
 
 #
 # Public Methods/Functions for CAF
 #
 
-sub app_options() {
-  # these options complement the ones defined in CAF::Application
-  push(my @array,
+sub app_options()
+{
 
-       { NAME    => 'dump=s',
-         HELP    => 'dumps the profile starting on <profile root> on stdout',
-         DEFAULT => undef },
+    # these options complement the ones defined in CAF::Application
+    push(
+        my @array,
 
-       { NAME    => 'isactive=s',
-         HELP    => 'is the specified component active in the CCM profile?',
-         DEFAULT => undef},
+        {
+            NAME    => 'dump=s',
+            HELP    => 'dumps the profile starting on <profile root> on stdout',
+            DEFAULT => undef
+        },
 
-       { NAME    => 'components=s',
-         HELP    => 'visualizes components provided as arguments',
-         DEFAULT => undef },
+        {
+            NAME    => 'isactive=s',
+            HELP    => 'is the specified component active in the CCM profile?',
+            DEFAULT => undef
+        },
 
-       { NAME    => 'cache_root:s',
-         HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)',
-         DEFAULT => undef },
+        {
+            NAME    => 'components=s',
+            HELP    => 'visualizes components provided as arguments',
+            DEFAULT => undef
+        },
 
-       { NAME    => 'useprofile:s',
-         HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
-         DEFAULT => undef },
+        {
+            NAME    => 'cache_root:s',
+            HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)',
+            DEFAULT => undef
+        },
 
-       { NAME    => 'pan',
-         HELP    => 'display the profile in a pan similar syntax',
-         DEFAULT => undef },
+        {
+            NAME    => 'useprofile:s',
+            HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
+            DEFAULT => undef
+        },
 
-       { NAME    => 'deref',
-         HELP    => 'show (dereference) the data pointed to by the property fetch, link and stream properties',
-         DEFAULT => undef },
+        {
+            NAME    => 'pan',
+            HELP    => 'display the profile in a pan similar syntax (sets format "pan")',
+            DEFAULT => 0
+        },
 
-       { NAME    => 'deriv',
-         HELP    => 'show derivation information, if any.',
-         DEFAULT => undef },
+        {
+            NAME => 'deref',
+            HELP =>
+                'show (dereference) the data pointed to by the property fetch, link and stream properties',
+            DEFAULT => 0
+        },
 
-       { NAME    => 'unescape!',
-         HELP    => 'Unescape or do not unescape nlist keys (D: unescape).',
-         DEFAULT => 'unescape' },
+        {
+            NAME    => 'deriv',
+            HELP    => 'show derivation information, if any.',
+            DEFAULT => 0
+        },
+
+        {
+            NAME    => 'unescape!',
+            HELP    => 'Unescape or do not unescape nlist keys (D: unescape).',
+            DEFAULT => 1
+        },
+
+        {
+            NAME    => 'indentation',
+            HELP    => 'Indentation to use (one per level).',
+            DEFAULT => ' '
+        },
+
+        {
+            NAME    => 'depth=s',
+            HELP    => 'Maximum level depth to show. (Default to undef, meaning no restrictions)',
+            DEFAULT => undef,
+        },
+
+        {
+            NAME    => 'paths',
+            HELP    => 'Only show the path(s), no values. (Sets format "paths")',
+            DEFAULT => 0,
+        },
+
+        {
+            NAME => 'format:s',
+            HELP =>
+                'Select the format to show. Undefined or unknown implies "tree"; also "pan" and "paths".',
+            DEFAULT => 'tree',
+        },
 
     );
 
@@ -195,31 +236,30 @@ sub app_options() {
 
 }
 
+sub setCCMConfig
+{
+    my ($self, $cacheroot, $profileID) = @_;
 
+    $self->verbose('accessing CCM cache manager');
 
+    $self->{'CACHEMGR'} = EDG::WP4::CCM::CacheManager->new($cacheroot);
+    unless (defined $self->{'CACHEMGR'}) {
+        throw_error('cannot access cache manager');
+        return undef;
+    }
 
-sub setCCMConfig {
-  my ($self,$cacheroot,$profileID)=@_;
+    my $cred = undef;    # not defined yet in CCM
 
-  $self->verbose('accessing CCM cache manager..');
+    $self->verbose('getting unlocked CCM configuration');
 
-  $self->{'CACHEMGR'}=EDG::WP4::CCM::CacheManager->new($cacheroot);
-  unless (defined $self->{'CACHEMGR'}) {
-    throw_error ('cannot access cache manager');
-    return undef;
-  }
+    $self->{'CCM_CONFIG'} =
+        $self->{'CACHEMGR'}->getUnlockedConfiguration($cred, $profileID);
+    unless (defined $self->{'CCM_CONFIG'}) {
+        throw_error('cannot get configuration via CCM');
+        return undef;
+    }
 
-  my $cred=undef; # not defined yet in CCM
-
-  $self->verbose('getting unlocked CCM configuration..');
-
-  $self->{'CCM_CONFIG'}=$self->{'CACHEMGR'}->getUnlockedConfiguration($cred,$profileID);
-  unless (defined $self->{'CCM_CONFIG'}) {
-    throw_error ('cannot get configuration via CCM');
-    return undef;
-  }
-
-  return SUCCESS;
+    return SUCCESS;
 }
 
 #
@@ -227,60 +267,65 @@ sub setCCMConfig {
 # returns the CCM config instance
 #
 
-sub getCCMConfig {
-  my $self=shift;
+sub getCCMConfig
+{
+    my $self = shift;
 
-  return $self->{'CCM_CONFIG'};
+    return $self->{'CCM_CONFIG'};
 }
 
+sub _initialize
+{
+    my $self = shift;
 
-sub _initialize {
-  my $self = shift;
-  #
-  # define application specific data.
-  #
-  # external version number
-  $self->{'VERSION'} ='@VERSION@';
-  # show setup text
-  $self->{'USAGE'} =
-    "Usage: ncm-query --dump <profile root> [--pan] [--deref] [--deriv] or \n".
-    "                 --components component1 component2 .. [--pan] [--deref] [--deriv] or\n".
-    "                 [--isactive component]\n".
-    "                 [--unescape|nounescape]\n";
-  #
-  # start initialization of CAF::Application
-  #
-  unless ($self->SUPER::_initialize(@_)) {
-    return undef;
-  }
+    # define application specific data.
+    # external version number
+    $self->{'VERSION'} = '@VERSION@';
 
-  # ensure allowed to run
-  if ($>) {
-    $self->error("Sorry ".$self->username().
-         ", this program must be run by root");
-    exit(-1);
-  }
+    # show setup text
+    $self->{'USAGE'} = <<EOF;
+Usage: ncm-query [--dump] <profile root> 
+        or --components component1 component2 ..   
+        or [--isactive component]
+        with options
+        [--deref] [--deriv] [--unescape|nounescape]
+        [--indentation indent] [--depth maxdepth]
+        [--paths] [--pan] [--format pan, paths or tree]
+EOF
 
-  return SUCCESS;
+    # start initialization of CAF::Application
+    unless ($self->SUPER::_initialize(@_)) {
+        return undef;
+    }
+
+    return SUCCESS;
 }
 
-
-#############################################################
-# ncd main program
-#############################################################
-
+#
+# ncm-query main program
+#
 package main;
 
 use strict;
+use warnings;
+
 use LC::Exception qw (SUCCESS throw_error);
 use vars qw($this_app %SIG);
 use EDG::WP4::CCM::Element qw(unescape);
 
+use Readonly;
 
-my $ec=LC::Exception::Context->new->will_store_errors;
+Readonly::Hash my %REPORT_STYLE => {
+    TREE      => "tree",
+    PAN       => "pan",
+    PATH_ONLY => "path-only",
+};
+
+my $ec = LC::Exception::Context->new->will_store_errors;
 
 # fix umask
-umask (022);
+umask(022);
+
 # minimal Path
 $ENV{"PATH"} = "/bin:/sbin:/usr/bin:/usr/sbin";
 
@@ -288,168 +333,174 @@ $ENV{"PATH"} = "/bin:/sbin:/usr/bin:/usr/sbin";
 autoflush STDOUT 1;
 autoflush STDERR 1;
 
-my $depth=0;
-my $REPORT_PAN_STYLE=0;
-my $DEREFERENCE=0;
-my $DERIVATION=0;
-my $UNESCAPE=0;
-
 #------------------------------------------------------------
 # Functions in the main program
 #------------------------------------------------------------
 
-
 # search function: dumps the config tree recursively
 # code adapted from Rafael A. Leiva
+sub search
+{
+    my ($element, $depth, $settings, $style) = @_;
 
-sub search {
-    my ($element) = @_;
-    my $i;
-    my $str='';
-    my $deriv='';
-    my $deref='';
-    my $type;
-    my $value;
-    for( $i=0 ; $i<$depth ; $i++ ) {
-        $str .= "  ";
-    }
-    if( $element->isProperty() ) {
-        $str .='$ '.$element->getName() . " : ";
-        # simple types
-        $type ="string" if $element->isType(EDG::WP4::CCM::Element::STRING);
-        $type ="long"   if $element->isType(EDG::WP4::CCM::Element::LONG);
-        $type ="double" if $element->isType(EDG::WP4::CCM::Element::DOUBLE);
-        $type ="boolean" if $element->isType(EDG::WP4::CCM::Element::BOOLEAN);
-        $str .= "($type) '";
-        $value = $element->getValue();
-        $str .= $value . "'";
-        $deriv = '';
-        if ($DERIVATION) {
-            $deriv=' derivation: ['.$element->getDerivation().']';
-        }
-        $deref = '';
-        if ($DEREFERENCE) {
-            $deref = ' dereference: ['.$deref.']' if ($deref ne '');
-        } else {
-            $deref = '';
+    return if (defined($settings->{MAX_DEPTH}) && $depth > $settings->{MAX_DEPTH});
+
+    my $element_name = $element->getName();
+    my $str          = $settings->{INDENTATION} x $depth;
+    my $el_path      = $element->getPath()->toString();
+
+    if ($element->isProperty()) {
+        my $deriv = '';
+        my $deref = '';
+
+        my $type  = $settings->{MAP}->{$element->getType()};
+        my $value = $element->getValue();
+
+        if ($settings->{DERIVATION}) {
+            $deriv = ' derivation: [' . $element->getDerivation() . ']';
         }
 
-        if ($REPORT_PAN_STYLE) {
-            $value = '"'.$value.'"' if $element->isType(EDG::WP4::CCM::Element::STRING);
-            $this_app->report('"'.$element->getPath()->toString().'" = '.$value. '; # '.$type . $deref . $deriv);
+        if ($settings->{DEREFERENCE}) {
+            $deref = " dereference: [$deref]" if ($deref ne '');
+        }
+
+        if ($settings->{REPORT_STYLE_PAN}) {
+            $value = "\"$value\"" if ($type eq "string");
+            $str = "\"$el_path\" = $value; # $type";
+        } elsif ($settings->{REPORT_STYLE_TREE}) {
+            $str .= "\$ $element_name : ($type) '$value'";
+        } elsif ($settings->{REPORT_STYLE_PATHS}) {
+            $str = $el_path;
+        }
+
+        $this_app->report("$str$deref$deriv");
+    } else {
+        my $skip_next = defined($settings->{MAX_DEPTH}) && $depth + 1 > $settings->{MAX_DEPTH};
+
+        if ($settings->{REPORT_STYLE_TREE}) {
+            if ($settings->{UNESCAPE}) {
+                $element_name = unescape($element_name);
+            }
+            $this_app->report("$str+-$element_name");
+        }
+
+        if ($skip_next) {
+            if ($settings->{REPORT_STYLE_PATHS}) {
+                # trailing / indicates possible next level
+                $this_app->report("$el_path/");
+            }
         } else {
-            $this_app->report($str . $deref . $deriv);
+            $depth++;
+            while ($element->hasNextElement()) {
+                search($element->getNextElement(), $depth, $settings);
+            }
         }
-        $depth--;
-        return;
     }
-    unless ($REPORT_PAN_STYLE) {
-        my $element_name = $element->getName();
-        if ( $UNESCAPE ) {
-              $element_name = unescape($element_name);
-        }
-        $this_app->report($str. "+-" . $element_name);
-    }
-    while( $element->hasNextElement() ) {
-        $depth++;
-        &search($element->getNextElement(),$depth);
-    }
-    $depth--;
     return;
 }
 
-
-sub dump_info {
-  my $path=shift;
-  my $element = $this_app->getCCMConfig()->getElement($path);
-  unless (defined $element) {
-    $ec->ignore_error();
-    $this_app->error("Path: '".$path."' does not exist");
-    exit(-1);
-  }
-  $this_app->report();
-  $this_app->info('Subtree: '.$path);
-  &search($element);
+sub dump_info
+{
+    my ($path, $settings, $ec) = @_;
+    my $element = $this_app->getCCMConfig()->getElement($path);
+    unless (defined $element) {
+        $ec->ignore_error();
+        $this_app->error("Path: '$path' does not exist");
+        exit(-1);
+    }
+    $this_app->info("Subtree: $path") if (!$settings->{REPORT_STYLE_PATHS});
+    search($element, 0, $settings);
 }
 
-
-#------------------------------------------------------------
+#
 # main loop
-#------------------------------------------------------------
-
-
 #
+
 # initialize the ncm-query application
-#
-unless ($this_app = query->new($0,@ARGV)) {
-  throw_error("cannot start application");
+unless ($this_app = query->new($0, @ARGV)) {
+    throw_error("cannot start application");
 }
 
-
-#
 # process command line options before proceeding.
-#
 
 # get CCM config
-unless ($this_app->setCCMConfig(
-            $this_app->option('cache_root'),
-            $this_app->option('useprofile'))
-       ) {
-  $this_app->error("cannot get CCM configuration");
-  exit(-1);
+unless ($this_app->setCCMConfig($this_app->option('cache_root'), $this_app->option('useprofile'))) {
+    $this_app->error("cannot get CCM configuration");
+    exit(-1);
 }
 
-unless (scalar @ARGV || $this_app->option('dump') ||
-  $this_app->option('components') ||
-        $this_app->option('isactive')) {
-  $this_app->error('please specify an option');
-  $this_app->report($this_app->{'USAGE'});
-  exit(-1);
+unless (scalar @ARGV
+    || $this_app->option('dump')
+    || $this_app->option('components')
+    || $this_app->option('isactive'))
+{
+    $this_app->error('please specify an option');
+    $this_app->report($this_app->{'USAGE'});
+    exit(-1);
 }
 
-my $active=$this_app->option('isactive');
+my $active = $this_app->option('isactive');
 if (defined $active) {
-  my $element = $this_app->getCCMConfig()->getElement("/software/components/".$active."/active");
-  if (defined $element && $element->getValue() eq 'true') {
-    $this_app->info("Component $active is active");
-    exit (0);
-  }
-  $ec->ignore_error();
-  $this_app->error("Component $active is not defined or not active");
-  exit(-1);
+    my $element = $this_app->getCCMConfig()->getElement("/software/components/$active/active");
+    if (defined $element && $element->getValue() eq 'true') {
+        $this_app->info("Component $active is active");
+        exit(0);
+    }
+    $ec->ignore_error();
+    $this_app->error("Component $active is not defined or not active");
+    exit(-1);
 }
 
+my $settings = {
+    MAP => {
+        EDG::WP4::CCM::Element::STRING  => 'string',
+        EDG::WP4::CCM::Element::LONG    => 'long',
+        EDG::WP4::CCM::Element::DOUBLE  => 'double',
+        EDG::WP4::CCM::Element::BOOLEAN => 'boolean',
+    },
+    DEREFERENCE => $this_app->option('deref'),
+    DERIVATION  => $this_app->option('deriv'),
+    UNESCAPE    => $this_app->option('unescape'),
+    INDENTATION => $this_app->option('indentation'),
+    MAX_DEPTH   => $this_app->option('depth'),
+};
 
-$REPORT_PAN_STYLE=1 if ($this_app->option('pan'));
-$DEREFERENCE=1 if ($this_app->option('deref'));
-$DERIVATION=1 if ($this_app->option('deriv'));
-
-$UNESCAPE=1 if ($this_app->option('unescape'));
-
-my @PATHS=();
-my $wantcomponent=0;
-
-my $path=$this_app->option('dump');
-if (defined $path) {
-  push(@PATHS,$path);
+if ($this_app->option('pan')) {
+    $settings->{REPORT_STYLE_PAN} = 1;
+} elsif ($this_app->option('paths')) {
+    $settings->{REPORT_STYLE_PATHS} = 1;
 } else {
-  $path=$this_app->option('components');
-  if (defined $path) {
-    push(@PATHS,$path);
-    $wantcomponent=1;
-  }
+    my $fmt = uc($this_app->option('format'));
+    if ($REPORT_STYLE{$fmt}) {
+        $settings->{"REPORT_STYLE_$fmt"} = 1;
+    } else {
+        $this_app->warn("Unsupported format " . $this_app->option('format'));
+        $settings->{REPORT_STYLE_TREE} = 1;
+    }
 }
 
-push(@PATHS,@ARGV);
+my @PATHS         = ();
+my $wantcomponent = 0;
 
-foreach (@PATHS) {
-  if ($wantcomponent) {
-    &dump_info('/software/components/'.$_)
-  } else {
-    &dump_info($_);
-  }
+my $path = $this_app->option('dump');
+if (defined $path) {
+    push(@PATHS, $path);
+} else {
+    $path = $this_app->option('components');
+    if (defined $path) {
+        push(@PATHS, $path);
+        $wantcomponent = 1;
+    }
+}
+
+push(@PATHS, @ARGV);
+
+foreach my $path (@PATHS) {
+    if ($wantcomponent) {
+        $path = "/software/components/$path";
+    }
+    dump_info($path, $settings, $ec);
 }
 
 exit(0);
 
-#*#################################################################

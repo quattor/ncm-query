@@ -19,25 +19,50 @@
 # component name.
 _ncm_query()
 {
-    local opts="--component --help"
-    local comps=`find /usr/lib/perl/NCM/Component -name '*.pm' -exec basename '{}' .pm ';'`
-    local paths="/hardware /hardware/cards /hardware/cards/nic /hardware/memory /system /system/network /system/aii/osinstall/ks /system/aii/nbp/pxelinux /system/filesystems /system/blockdevices /software/packages /software/components"
+    local wordlist path
     COMPREPLY=()
     local cur="${COMP_WORDS[COMP_CWORD]}"
     case $cur in
         -*)
-            COMPREPLY=($(compgen -W "$opts" -- ${cur}))
-            return 0
-            ;;
-        /*)
-            COMPREPLY=($(compgen -W "$paths" -- ${cur}))
-            return 0
+            # some more common options
+            wordlist="--component --help --depth --pan --paths"
             ;;
         *)
-            COMPREPLY=($(compgen -W "$comps" -- ${cur}))
-            return 0
+            case $cur in
+            /*)
+                path=${cur%/*}
+                ;;
+            *)
+                path=/software/components
+                ;;
+            esac
+            
+            newwordlist=$path/
+            # we need a loop. single word will stop the tab completion
+            # (assuming the solution is found). we need to try to look for next level words
+            while [ `echo $newwordlist |wc -w` == 1 ]; do
+                wordlist=$newwordlist
+                newwordlist=`ncm-query --depth=1 --paths $newwordlist 2>/dev/null |grep "$cur"`
+                if [ -z "$newwordlist" ]; then
+                    # eg can be empty when there are no properties, only tree
+                    #echo "empty newwordlist $newwordlist wordlist $wordlist"
+                    break
+                fi
+                if [ "$newwordlist" == "$wordlist" ]; then
+                    # no progress
+                    #echo "no progress newwordlist $newwordlist wordlist $wordlist"
+                    break
+                fi
+
+                wordlist=$newwordlist
+                #echo "newwordlist $newwordlist wordlist $wordlist"
+            done
             ;;
     esac
+
+    COMPREPLY=($(compgen -W "$wordlist" -- ${cur}))
+    return 0
+    
 }
 
 complete -F _ncm_query ncm-query

@@ -18,7 +18,7 @@
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
-    <version>1.29</version>
+    <version>1.39</version>
   </parent>
 
   <licenses>
@@ -40,6 +40,13 @@
     <contributor>
       <name>Germá Cancio Meliá</name>
       <email>German.Cancio@cern.ch</email>
+      <roles>
+        <role>author</role>
+      </roles>
+    </contributor>
+    <contributor>
+      <name>Rafael Angel Garcia Leiva</name>
+      <email>angel.leiva@uam.es</email>
       <roles>
         <role>author</role>
       </roles>
