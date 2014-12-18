@@ -213,7 +213,7 @@ sub setCCMConfig {
 
   $self->verbose('getting unlocked CCM configuration..');
 
-  $self->{'CCM_CONFIG'}=$self->{'CACHEMGR'}->getUnlockedConfiguration($cred,$profileID);
+  $self->{'CCM_CONFIG'}=$self->{'CACHEMGR'}->getAnonymousConfiguration($cred,$profileID);
   unless (defined $self->{'CCM_CONFIG'}) {
     throw_error ('cannot get configuration via CCM');
     return undef;
@@ -252,13 +252,6 @@ sub _initialize {
   #
   unless ($self->SUPER::_initialize(@_)) {
     return undef;
-  }
-
-  # ensure allowed to run
-  if ($>) {
-    $self->error("Sorry ".$self->username().
-         ", this program must be run by root");
-    exit(-1);
   }
 
   return SUCCESS;
