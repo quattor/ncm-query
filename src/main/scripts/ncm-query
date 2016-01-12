@@ -74,10 +74,6 @@ of some keys being unescaped when this is not appropriate.
 
 Default : unescape
 
-=item --useprofile <profile_id>
-
-use <profile_id> as NVA-API configuration profile ID (default: latest)
-
 =item --cache_root <directory>
 
 CCM cache root directory (optional, otherwise CCM default taken)
@@ -167,10 +163,6 @@ sub app_options() {
 
        { NAME    => 'cache_root:s',
          HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)',
-         DEFAULT => undef },
-
-       { NAME    => 'useprofile:s',
-         HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
          DEFAULT => undef },
 
        { NAME    => 'pan',
@@ -386,7 +378,7 @@ unless ($this_app = query->new($0,@ARGV)) {
 # get CCM config
 unless ($this_app->setCCMConfig(
             $this_app->option('cache_root'),
-            $this_app->option('useprofile'))
+            undef)
        ) {
   $this_app->error("cannot get CCM configuration");
   exit(-1);
