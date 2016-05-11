@@ -1,5 +1,3 @@
-#!/bin/bash
-#
 # ${license-info}
 # ${developer-info}
 # ${author-info}
