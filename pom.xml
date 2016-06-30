@@ -3,7 +3,7 @@
   <groupId>org.quattor.cfg.module</groupId>
   <artifactId>ncm-query</artifactId>
   <packaging>pom</packaging>
-  <version>16.2.1-SNAPSHOT</version>
+  <version>16.6.0-rc1</version>
   <name>Node Configuration Manager - query front-end</name>
   <scm>
     <connection>scm:git:git://github.com/quattor/ncm-query.git</connection>
@@ -250,15 +250,15 @@
             <configuration>
               <tasks name="Rename">
                 <move filtering="true" todir="${project.build.directory}/doc/pod">
-                  <fileset dir="${project.build.directory}/doc/pod"/>
+                  <fileset dir="${project.build.directory}/doc/pod" />
                   <mapper>
-                    <globmapper from="ncm-query" to="ncm-query.pod"/>
+                    <globmapper from="ncm-query" to="ncm-query.pod" />
                   </mapper>
                 </move>
                 <move filtering="true" todir="${project.build.directory}/lib/perl">
-                  <fileset dir="${project.build.directory}/lib/perl"/>
+                  <fileset dir="${project.build.directory}/lib/perl" />
                   <mapper>
-                    <globmapper from="ncm-query" to="ncm-query.pod"/>
+                    <globmapper from="ncm-query" to="ncm-query.pod" />
                   </mapper>
                 </move>
               </tasks>
