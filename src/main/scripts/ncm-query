@@ -133,7 +133,11 @@ toolsuite.
 
 package query;
 
-use lib "/usr/lib/perl";
+BEGIN {
+  pop @INC if $INC[-1] eq '.';
+  use lib "/usr/lib/perl";
+}
+
 use CAF::Application;
 use CAF::Reporter;
 use LC::Exception qw (SUCCESS throw_error);
